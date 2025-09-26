@@ -1,4 +1,5 @@
 import Parser from 'rss-parser';
+import { writeTextFileAsync } from '../utils/writeTextFileAsync';
 
 export interface NewsArticle {
   title: string;
@@ -9,7 +10,7 @@ export interface NewsArticle {
 }
 
 export class DataLoaderService {
-  private parser: Parser;
+  private parser: Parser; // RSS フィードを解析するために
 
   constructor() {
     this.parser = new Parser();
@@ -18,6 +19,8 @@ export class DataLoaderService {
   async loadFromRSS(url: string, source: string): Promise<NewsArticle[]> {
     try {
       const feed = await this.parser.parseURL(url);
+
+      await writeTextFileAsync('data/debug/debug_rss_feed.json', JSON.stringify(feed, null, 2));
       const articles: NewsArticle[] = [];
 
       for (const item of feed.items || []) {

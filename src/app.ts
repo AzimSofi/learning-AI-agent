@@ -4,7 +4,6 @@ import { Gemini } from '@llamaindex/google';
 import { VectorStoreIndex, Settings, SimpleVectorStore, Document, storageContextFromDefaults } from 'llamaindex';
 import { HuggingFaceEmbedding } from '@llamaindex/huggingface';
 import { DataLoaderService, NewsArticle } from './services/dataLoader';
-import path from 'path';
 import fs from 'fs';
 
 dotenv.config(); // process.env オブジェクトに環境変数が設定される
