@@ -1,4 +1,3 @@
-// src/app.ts
 import express from 'express';
 import dotenv from 'dotenv';
 import { Gemini } from '@llamaindex/google';
@@ -8,8 +7,7 @@ import { DataLoaderService, NewsArticle } from './services/dataLoader';
 import path from 'path';
 import fs from 'fs';
 
-// .env ファイルから環境変数をロード
-dotenv.config();
+dotenv.config(); // process.env オブジェクトに環境変数が設定される
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -18,22 +16,27 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 
 // CSPヘッダーを設定（開発環境用）
+const cspPolicy = process.env.NODE_ENV === 'production' 
+  ? "default-src 'self';" 
+  : "default-src 'self'; connect-src 'self' http://localhost:*";
+
 app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy', "default-src 'self'; connect-src 'self' http://localhost:*");
+  res.setHeader('Content-Security-Policy', cspPolicy);
   next();
 });
 
-// RAGシステムの初期化関数
 async function initializeRagSystem() {
-  // LLMの設定
   const llm = new Gemini({
-    // model: GEMINI_MODEL.GEMINI_PRO,
     model: "gemini-2.5-flash" as any,
   });
-  Settings.llm = llm;
+  Settings.llm = llm; // デフォルトはopenAIだから（geminiを使いたい）、設定しないと
   Settings.embedModel = new HuggingFaceEmbedding();
 
-  // シンプルなベクトルストアの初期化
+  // シンプルなベクトルストアの初期化・メモリ内にベクトルを保存
+  const vectorDbPath = "./data/vectordb";
+  if (!fs.existsSync(vectorDbPath)) {
+    fs.mkdirSync(vectorDbPath, { recursive: true });
+  }
   const vectorStore = new SimpleVectorStore();
 
   // ニュース記事の読み込み
@@ -59,8 +62,7 @@ async function initializeRagSystem() {
   );
 
   // ストレージコンテキストの作成
-  const storageContext = await storageContextFromDefaults({ vectorStore });
-
+  const storageContext = await storageContextFromDefaults({ vectorStore, persistDir: vectorDbPath });
   // インデックスを作成
   const index = await VectorStoreIndex.fromDocuments(documents, { storageContext });
 
@@ -84,6 +86,9 @@ initializeRagSystem()
     process.exit(1); // 初期化失敗時は終了
   });
 
+app.get('/', (req, res) => {
+  res.status(200).send('RAG System is up and running!');
+});
 
 // RAGクエリを処理するAPIエンドポイント
 app.post('/api/query', async (req, res) => {
