@@ -8,7 +8,8 @@
     "start": "node dist/app.js",
     "dev": "ts-node src/app.ts",
     "test": "jest",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "mcp-test-server": "ts-node mcp-server/mcpTestServer.ts"
   },
   "keywords": [
     "RAG",
@@ -21,10 +22,14 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@google/gemini-cli": "^0.6.1",
     "@google/generative-ai": "^0.12.0",
     "@llamaindex/google": "^0.3.22",
     "@llamaindex/huggingface": "^0.1.30",
+    "@modelcontextprotocol/sdk": "^1.18.2",
     "@types/express": "^5.0.3",
+    "csv-parse": "^6.1.0",
+    "csv-stringify": "^6.6.0",
     "dotenv": "^16.3.0",
     "express": "^5.1.0",
     "llamaindex": "^0.12.0",
@@ -33,6 +38,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.0",
     "@types/node": "^20.10.0",
+    "@types/xlsx": "^0.0.35",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "eslint": "^8.55.0",
@@ -40,7 +46,8 @@
     "rimraf": "^5.0.0",
     "ts-jest": "^29.4.4",
     "ts-node": "^10.9.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "xlsx": "^0.18.5"
   },
   "engines": {
     "node": ">=18.0.0"
