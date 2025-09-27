@@ -1,53 +1,23 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';
 
-const server = new Server(
+const server = new McpServer({
+    name: "mcp-test-server",
+    version: "1.0.0",
+});
+
+// Add an addition tool
+server.registerTool("add",
     {
-        name: "mcp-test-server",
-        version: "1.0.0",
+        title: "Addition Tool",
+        description: "Add two numbers",
+        inputSchema: { a: z.number(), b: z.number() }
     },
-    {
-        capabilities: {
-            tools: {},
-        },
-    }
+    async ({ a, b }) => ({
+        content: [{ type: "text", text: String(a + b) }]
+    })
 );
-
-// Handle tool calls
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    if (request.params.name === "add") {
-        const args = request.params.arguments || {};
-        const a = args.a;
-        const b = args.b;
-
-        if (typeof a !== 'number' || typeof b !== 'number') {
-            throw new Error("Invalid arguments for 'add' tool: 'a' and 'b' must be numbers.");
-        }
-        return { result: a + b };
-    }
-    throw new Error("Unknown tool");
-});
-
-// List available tools
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-        tools: [
-            {
-                name: "add",
-                description: "Add two numbers",
-                inputSchema: {
-                    type: "object",
-                    properties: {
-                        a: { type: "number" },
-                        b: { type: "number" },
-                    },
-                    required: ["a", "b"],
-                },
-            },
-        ],
-    };
-});
 
 const transport = new StdioServerTransport();
 server.connect(transport).then(() => {
