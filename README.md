@@ -48,6 +48,27 @@ npm run mcp-test-server
 
 このコマンドは `mcp-server/mcpTestServer.ts` を実行し、2つの数字を足す `add` ツールを提供するテストサーバーを起動します。Stdio経由でMCPクライアントと通信します。
 
+#### MCP Inspectorでのテスト
+
+MCPサーバーをテストするには、MCP Inspectorを使用します。Web UIでツールやリソースを操作できます。
+
+1. MCP Inspectorをインストール（ローカル）:
+   ```bash
+   npm install @modelcontextprotocol/inspector
+   ```
+
+2. Inspectorを起動:
+   ```bash
+   npx @modelcontextprotocol/inspector
+   ```
+
+3. ブラウザで開き、以下の設定で接続:
+   - **Transport Type**: STDIO
+   - **Command**: npx
+   - **Arguments**: ts-node mcp-server/mcpTestServer.ts
+
+これでツール（`add`）とリソース（`About Azim`）をテストできます。
+
 #### Gemini CLIとの連携
 
 Gemini CLIでMCPサーバーを使用するには、まずMCPサーバーをバックグラウンドで起動し、次にGemini CLIでモデルを指定して実行します。
@@ -62,7 +83,7 @@ Gemini CLIでMCPサーバーを使用するには、まずMCPサーバーをバ�
    gemini -m "gemini-2.5-flash"
    ```
 
-Gemini CLIがMCPプロトコルをサポートしている場合、起動したサーバーのツール（例: `add`）を利用できます。
+Gemini CLIがMCPプロトコルをサポートしている場合、起動したサーバーのツール（例: `add`）を利用できます。リソースはGemini CLIでサポートされていないため、Inspectorでテストしてください。
 
 ## プロジェクト構造
 
@@ -92,12 +113,13 @@ src/
 - RAGの基本概念
 - ベクトルデータベースの操作
 - MCPのTypeScriptでの立ち上げ方法
+- MCP Inspectorを使用したサーバーテスト
 
 このプロジェクトでは以下の技術を学ぶことができます：
 
 - **RAG (Retrieval-Augmented Generation)**: ベクトル検索と生成AIの組み合わせ
 - **ベクトルデータベース**: テキストのベクトル化と検索
-- **MCP (Model Context Protocol)**: TypeScriptでのサーバー立ち上げ方法
+- **MCP (Model Context Protocol)**: TypeScriptでのサーバー立ち上げ方法とInspectorでのテスト
 
 ## テスト実行
 
