@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "test-server": {
+      "command": "npx",
+      "args": [
+        "ts-node",
+        "mcp-server/mcpTestServer.ts"
+      ]
+    }
+  }
+}
