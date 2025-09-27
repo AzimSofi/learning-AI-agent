@@ -1,24 +1,24 @@
-# RAG News Summarization Agent
+# Learning AI agent
 
-TypeScriptで実装されたRAG（Retrieval-Augmented Generation）ベースのニュース記事要約エージェントです。LlamaIndexとGemini AIを使用して、ニュース記事をベクトル化し、ユーザーのクエリに対して関連記事を検索・要約します。
+RAG（Retrieval-Augmented Generation）とMCP（Model Context Protocol）の学習プロジェクトです。TypeScriptを使用して、データ読み込み、ベクトル化、検索などの基本的なRAG機能と、MCPサーバーの実装を学習することを目的としています。
 
 ## 機能
 
-- RSSフィードからのニュース記事自動読み込み
+- RSSフィードからのデータ読み込み
 - 記事のチャンク化とベクトル化
-- ベクトル検索による関連記事検索
-- Gemini AIによる要約生成
-- REST APIエンドポイント
+- ベクトル検索による関連データ検索
+- シンプルなデータストアとインデックスストア
 
 ## 技術スタック
 
 - **言語**: TypeScript
-- **フレームワーク**: Express.js
-- **RAGライブラリ**: LlamaIndex
-- **LLM**: Google Gemini (gemini-2.5-flash)
-- **埋め込みモデル**: HuggingFace Embedding
-- **ベクトルストア**: SimpleVectorStore (LlamaIndex)
-- **データソース**: RSSフィード (TechCrunch, The Verge)
+- **テスト**: Jest
+- **フレームワーク**: Express
+- **RAGライブラリ**: LlamaIndex (@llamaindex/google, @llamaindex/huggingface)
+- **AIモデル**: Google Generative AI (@google/generative-ai)
+- **MCP**: Model Context Protocol SDK (@modelcontextprotocol/sdk)
+- **データ処理**: RSS Parser (rss-parser), CSV Parse/Stringify
+- **ユーティリティ**: Node.js標準ライブラリ, dotenv
 
 ## セットアップ
 
@@ -32,57 +32,37 @@ TypeScriptで実装されたRAG（Retrieval-Augmented Generation）ベースの�
 npm install
 ```
 
-### 2. 環境変数の設定
-
-`.env`ファイルを作成し、以下の環境変数を設定してください：
-
-```env
-GOOGLE_API_KEY=your_google_api_key_here
-PORT=3000
-```
-
-### 3. ビルド
-
-```bash
-npm run build
-```
-
-### 4. 実行
-
-```bash
-npm start
-```
-
-開発モードで実行する場合：
+### 2. 開発実行
 
 ```bash
 npm run dev
 ```
 
-### テスト実行
+### 3. MCPテストサーバーの実行
+
+MCP (Model Context Protocol) のテストサーバーを起動する場合：
 
 ```bash
-npm test
+npm run mcp-test-server
 ```
 
-## API使用方法
+このコマンドは `mcp-server/mcpTestServer.ts` を実行し、2つの数字を足す `add` ツールを提供するテストサーバーを起動します。Stdio経由でMCPクライアントと通信します。
 
-### ヘルスチェック
+#### Gemini CLIとの連携
 
-```bash
-GET /health
-```
+Gemini CLIでMCPサーバーを使用するには、まずMCPサーバーをバックグラウンドで起動し、次にGemini CLIでモデルを指定して実行します。
 
-### クエリ実行
+1. MCPサーバーをバックグラウンドで起動：
+   ```bash
+   npm run mcp-test-server &
+   ```
 
-```bash
-POST /api/query
-Content-Type: application/json
+2. Gemini CLIでモデルを指定して実行：
+   ```bash
+   gemini -m "gemini-2.5-flash"
+   ```
 
-{
-  "query": "今日のAIに関する最新ニュースを3つ教えて、要約して"
-}
-```
+Gemini CLIがMCPプロトコルをサポートしている場合、起動したサーバーのツール（例: `add`）を利用できます。
 
 ## プロジェクト構造
 
@@ -90,23 +70,34 @@ Content-Type: application/json
 jest.config.js          # Jestテスト設定
 package.json            # プロジェクト設定と依存関係
 tsconfig.json           # TypeScript設定
+data/
+├── debug/
+│   └── debug_rss_feed.json  # デバッグ用RSSフィードデータ
+└── vectordb/
+    ├── doc_store.json       # ドキュメントストア
+    └── index_store.json     # インデックスストア
+mcp-server/
+    └── mcpTestServer.ts  # MCPテストサーバー
 src/
-├── app.ts              # メインアプリケーションとAPIエンドポイント
-└── services/
-    ├── dataLoader.ts   # RSSデータ読み込みサービス
-    └── dataLoader.test.ts  # テストファイル
+├── app.ts              # メインアプリケーション
+├── services/
+│   ├── dataLoader.ts   # データ読み込みサービス
+│   └── dataLoader.test.ts  # テストファイル
+└── utils/
+    └── writeTextFileAsync.ts  # ファイル書き込みユーティリティ
 ```
 
 ## 学習ポイント
+
+- RAGの基本概念
+- ベクトルデータベースの操作
+- MCPのTypeScriptでの立ち上げ方法
 
 このプロジェクトでは以下の技術を学ぶことができます：
 
 - **RAG (Retrieval-Augmented Generation)**: ベクトル検索と生成AIの組み合わせ
 - **ベクトルデータベース**: テキストのベクトル化と検索
-- **プロンプトエンジニアリング**: LLMとの効果的な対話
-- **API設計**: RESTful APIの設計と実装
-- **TypeScript**: 型安全なJavaScript開発
-- **テスト**: Jestを使用したユニットテスト
+- **MCP (Model Context Protocol)**: TypeScriptでのサーバー立ち上げ方法
 
 ## テスト実行
 
