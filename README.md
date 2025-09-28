@@ -31,7 +31,7 @@ RAG（Retrieval-Augmented Generation）とMCP（Model Context Protocol）の学�
 - **RAGライブラリ**: LlamaIndex (@llamaindex/google, @llamaindex/huggingface)
 - **AIモデル**: Google Generative AI (@google/generative-ai)
 - **MCP**: Model Context Protocol SDK (@modelcontextprotocol/sdk)
-- **データ処理**: RSS Parser (rss-parser), CSV Parse/Stringify
+- **データ処理**: RSS Parser (rss-parser)
 - **ユーティリティ**: Node.js標準ライブラリ, dotenv
 
 ## セットアップ
@@ -57,11 +57,18 @@ GOOGLE_API_KEY=your_google_generative_ai_api_key_here
 
 ### 3. 開発実行
 
-```bash
-npm run dev
-```
+#### RAGシステムのExpressサーバー実行
 
-### 3. MCPテストサーバーの実行
+RAGシステムをAPI経由で利用するためのExpressサーバーを起動します。
+
+```bash
+npm run express:test
+```
+サーバーは `http://localhost:3000` で起動し、以下のエンドポイントを提供します。
+- `POST /api/query`: クエリを実行します。
+- `GET /health`: ヘルスチェックを行います。
+
+#### MCPテストサーバーの実行
 
 MCP (Model Context Protocol) のテストサーバーを起動する場合：
 
@@ -69,9 +76,9 @@ MCP (Model Context Protocol) のテストサーバーを起動する場合：
 npm run mcp:test
 ```
 
-このコマンドは `mcp-server/mcpTestServer.ts` を実行し、2つの数字を足す `add` ツールを提供するテストサーバーを起動します。Stdio経由でMCPクライアントと通信します。
+このコマンドは `src/examples/mcpTestServer.ts` を実行し、2つの数字を足す `add` ツールを提供するテストサーバーを起動します。Stdio経由でMCPクライアントと通信します。
 
-#### MCP Inspectorでのテスト
+### MCP Inspectorでのテスト
 
 MCPサーバーをテストするには、MCP Inspectorを使用します。Web UIでツールやリソースを操作できます。
 
@@ -88,11 +95,11 @@ MCPサーバーをテストするには、MCP Inspectorを使用します。Web 
 3. ブラウザで開き、以下の設定で接続:
    - **Transport Type**: STDIO
    - **Command**: npx
-   - **Arguments**: ts-node mcp-server/mcpTestServer.ts
+   - **Arguments**: ts-node src/examples/mcpTestServer.ts
 
 これでツール（`add`）とリソース（`About Azim`）をテストできます。
 
-#### Gemini CLIとの連携
+### Gemini CLIとの連携
 
 Gemini CLIでMCPサーバーを使用するには、まずMCPサーバーをバックグラウンドで起動し、次にGemini CLIでモデルを指定して実行します。
 
@@ -118,25 +125,27 @@ Gemini CLIがMCPプロトコルをサポートしている場合、起動した�
 ## プロジェクト構造
 
 ```
-jest.config.js          # Jestテスト設定
-package.json            # プロジェクト設定と依存関係
-tsconfig.json           # TypeScript設定
-data/
-├── debug/
-│   └── debug_rss_feed.json  # デバッグ用RSSフィードデータ
-└── vectordb/
-    ├── doc_store.json       # ドキュメントストア
-    └── index_store.json     # インデックスストア
-mcp-server/
-├── mcpServer.ts         # MCPサーバー
-└── mcpTestServer.ts     # MCPテストサーバー
-src/
-├── app.ts              # メインアプリケーション
-├── services/
-│   ├── dataLoader.ts   # データ読み込みサービス
-│   └── dataLoader.test.ts  # テストファイル
-└── utils/
-    └── writeTextFileAsync.ts  # ファイル書き込みユーティリティ
+.
+├── data/
+│   ├── debug/
+│   │   └── debug_rss_feed.json
+│   └── vectordb/
+│       ├── doc_store.json
+│       └── index_store.json
+├── jest.config.js
+├── package.json
+├── tsconfig.json
+└── src/
+    ├── app.ts
+    ├── examples/
+    │   ├── expressTestServer.ts # RAG APIサーバー
+    │   └── mcpTestServer.ts     # MCPテストサーバー
+    ├── services/
+    │   ├── dataLoader.ts
+    │   └── dataLoader.test.ts
+    └── utils/
+        ├── ragSystem.ts
+        └── writeTextFileAsync.ts
 ```
 
 ## 学習ポイント
