@@ -2,12 +2,26 @@
 
 RAG（Retrieval-Augmented Generation）とMCP（Model Context Protocol）の学習プロジェクトです。TypeScriptを使用して、データ読み込み、ベクトル化、検索などの基本的なRAG機能と、MCPサーバーの実装を学習することを目的としています。
 
+## 目的
+
+このプロジェクトは、AIエージェントの構築を学ぶためのものです。具体的には：
+- RAGシステムを通じて、RSSフィードからニュース記事を読み込み、ベクトル化してクエリベースの検索と生成応答を実現。
+- MCPサーバーを実装し、RAGシステムと統合したツール（ファイル一覧、RAGクエリ、RSSデータロード）の提供を学習。
+- 両者を統合し、AIモデル（Gemini）とベクトルデータベース（SimpleVectorStore）の操作を習得。
+
 ## 機能
 
-- RSSフィードからのデータ読み込み
-- 記事のチャンク化とベクトル化
-- ベクトル検索による関連データ検索
-- シンプルなデータストアとインデックスストア
+- **RAGシステム**:
+  - RSSフィード（TechCrunch、The Vergeなど）からのデータ読み込みとパース。
+  - 記事のチャンク化とベクトル化（HuggingFaceEmbeddingを使用）。
+  - ベクトル検索による関連データ検索とクエリエンジンでの応答生成（Gemini LLMを使用）。
+  - シンプルなベクトルストア（SimpleVectorStore）とドキュメント/インデックスストアの管理。
+  - Expressサーバー経由のAPIエンドポイント（`/api/query` でクエリ実行、`/health` でヘルスチェック）。
+- **MCPサーバー**:
+  - `list_files` ツール: 現在のワークスペースのファイル一覧を取得。
+  - `query_rag` ツール: RAGシステムにクエリを投げて回答を取得。
+  - `load_rss_data` ツール: RSSフィードからデータをロード。
+  - Stdioトランスポートを使用したクライアントとの通信。
 
 ## 技術スタック
 
@@ -25,6 +39,7 @@ RAG（Retrieval-Augmented Generation）とMCP（Model Context Protocol）の学�
 ### 前提条件
 
 - Node.js >= 18.0.0
+- Google Generative AI APIキー（Geminiモデル使用のため）
 
 ### 1. 依存関係のインストール
 
@@ -32,7 +47,15 @@ RAG（Retrieval-Augmented Generation）とMCP（Model Context Protocol）の学�
 npm install
 ```
 
-### 2. 開発実行
+### 2. 環境変数の設定
+
+`.env` ファイルを作成し、以下の変数を設定してください：
+
+```
+GOOGLE_API_KEY=your_google_generative_ai_api_key_here
+```
+
+### 3. 開発実行
 
 ```bash
 npm run dev
@@ -43,7 +66,7 @@ npm run dev
 MCP (Model Context Protocol) のテストサーバーを起動する場合：
 
 ```bash
-npm run mcp-test-server
+npm run mcp:test
 ```
 
 このコマンドは `mcp-server/mcpTestServer.ts` を実行し、2つの数字を足す `add` ツールを提供するテストサーバーを起動します。Stdio経由でMCPクライアントと通信します。
@@ -75,13 +98,20 @@ Gemini CLIでMCPサーバーを使用するには、まずMCPサーバーをバ�
 
 1. MCPサーバーをバックグラウンドで起動：
    ```bash
-   npm run mcp-test-server &
+   npm run mcp:test &
    ```
 
 2. Gemini CLIでモデルを指定して実行：
-   ```bash
-   gemini -m "gemini-2.5-flash"
-   ```
+
+   - デフォルト：
+     ```bash
+     gemini
+     ```
+
+   - 特定のモデル（例: gemini-2.5-flash）を指定する場合：
+     ```bash
+     gemini -m "gemini-2.5-flash"
+     ```
 
 Gemini CLIがMCPプロトコルをサポートしている場合、起動したサーバーのツール（例: `add`）を利用できます。リソースはGemini CLIでサポートされていないため、Inspectorでテストしてください。
 
@@ -98,7 +128,8 @@ data/
     ├── doc_store.json       # ドキュメントストア
     └── index_store.json     # インデックスストア
 mcp-server/
-    └── mcpTestServer.ts  # MCPテストサーバー
+├── mcpServer.ts         # MCPサーバー
+└── mcpTestServer.ts     # MCPテストサーバー
 src/
 ├── app.ts              # メインアプリケーション
 ├── services/
@@ -110,16 +141,19 @@ src/
 
 ## 学習ポイント
 
-- RAGの基本概念
-- ベクトルデータベースの操作
-- MCPのTypeScriptでの立ち上げ方法
+- RAGの基本概念（RSSフィード読み込み、ベクトル化、クエリエンジンでの応答生成）
+- ベクトルデータベースの操作（SimpleVectorStoreの初期化と永続化）
+- MCPのTypeScriptでの立ち上げ方法（ツールとリソースの登録）
 - MCP Inspectorを使用したサーバーテスト
+- ExpressサーバーでのAPIエンドポイントの実装
+- 環境変数の管理と設定
 
 このプロジェクトでは以下の技術を学ぶことができます：
 
 - **RAG (Retrieval-Augmented Generation)**: ベクトル検索と生成AIの組み合わせ
 - **ベクトルデータベース**: テキストのベクトル化と検索
 - **MCP (Model Context Protocol)**: TypeScriptでのサーバー立ち上げ方法とInspectorでのテスト
+- **AIモデル統合**: Google Geminiの使用と設定
 
 ## テスト実行
 
