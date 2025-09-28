@@ -22,6 +22,8 @@ server.registerResource("About Azim",
     new ResourceTemplate(
         "azim://profile/{info}",
         {
+            // list: undefined, // でも大丈夫そう。なぜかっという、
+            // listはただテンプレートに一致する具体的なリソースのURIのリストをクライアントに提供する方法だけです
             list: async () => ({
                 resources: [
                     { uri: "azim://profile/仕事", name: "仕事" },
@@ -30,7 +32,8 @@ server.registerResource("About Azim",
                     { uri: "azim://profile/年齢", name: "年齢" }
                 ]
             }),
-            complete: {
+            
+            complete: { // completeはただautocompletionだから、書かなくても大丈夫
                 info: async (prefix) => {
                     const possibleValues = ["仕事", "国籍", "趣味", "年齢"];
                     return possibleValues.filter(value => value.startsWith(prefix || ""));
@@ -45,26 +48,16 @@ server.registerResource("About Azim",
     async (uri, variables) => {
         const info = variables.info as string;
         let text = "";
-        switch (info) {
-            case "仕事":
-                text = "Azimはソフトウェアエンジニアです。";
-                break;
-            case "国籍":
-                text = "Azimの国籍は日本です。";
-                break;
-            case "趣味":
-                text = "Azimの趣味はプログラミングと読書です。";
-                break;
-            case "年齢":
-                text = "Azimの年齢は秘密です。";
-                break;
-            default:
-                text = "指定された情報が見つかりません。可能な値: 仕事, 国籍, 趣味, 年齢";
-        }
+
+        info === "仕事" ? text = "ソフトウェアエンジニア" : 
+        info === "国籍" ? text = "マレーシア人" : 
+        info === "趣味" ? text = "プログラミングと読書" : 
+        info === "年齢" ? text = "24歳" : 
+        text = "指定された情報が見つかりません。可能な値: 仕事, 国籍, 趣味, 年齢";
 
         return {
             contents: [{
-                uri: uri.href,
+                uri: uri.href, // コンテンツの識別と整合性を保つために
                 mimeType: "text/plain",
                 text: text
             }]
