@@ -5,11 +5,14 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node src/app.ts",
     "test": "jest",
     "clean": "rimraf dist",
-    "mcp:test": "ts-node mcp-server/mcpTestServer.ts",
-    "mcp": "ts-node mcp-server/mcpServer.ts"
+    "lint": "eslint . --ext .ts",
+    "prettier": "prettier --write .",
+    
+    "dev": "ts-node src/app.ts",
+    "express:test": "ts-node src/examples/expressTestServer.ts",
+    "mcp:test": "ts-node src/examples/mcpTestServer.ts"
   },
   "keywords": [
     "RAG",

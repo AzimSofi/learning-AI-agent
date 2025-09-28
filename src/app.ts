@@ -1,123 +1,173 @@
-import express from 'express';
-import dotenv from 'dotenv';
+import { config } from 'dotenv';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import * as fsPromises from 'fs/promises';
 import { Gemini } from '@llamaindex/google';
-import { VectorStoreIndex, Settings, SimpleVectorStore, Document, storageContextFromDefaults } from 'llamaindex';
-import { HuggingFaceEmbedding } from '@llamaindex/huggingface';
-import { DataLoaderService, NewsArticle } from './services/dataLoader';
-import fs from 'fs';
+import { VectorStoreIndex } from 'llamaindex';
+import { initializeRagSystem } from './utils/ragSystem';
 
-export { ragSystem };
+config();
+class MyMCPServer {
+  private server: Server;
+  private ragSystem: { index: VectorStoreIndex, llm: Gemini } | null = null;
 
-dotenv.config(); // process.env オブジェクトに環境変数が設定される
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-// JSONリクエストボディをパースするためのミドルウェア
-app.use(express.json());
-
-// CSPヘッダーを設定（開発環境用）
-const cspPolicy = process.env.NODE_ENV === 'production' 
-  ? "default-src 'self';" 
-  : "default-src 'self'; connect-src 'self' http://localhost:*";
-
-app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy', cspPolicy);
-  next();
-});
-
-async function initializeRagSystem() {
-  const llm = new Gemini({
-    model: "gemini-2.5-flash" as any,
-  });
-  Settings.llm = llm; // デフォルトはopenAIだから（geminiを使いたい）、設定しないと
-  Settings.embedModel = new HuggingFaceEmbedding();
-
-  // シンプルなベクトルストアの初期化・メモリ内にベクトルを保存
-  const vectorDbPath = "./data/vectordb";
-  if (!fs.existsSync(vectorDbPath)) {
-    fs.mkdirSync(vectorDbPath, { recursive: true });
-  }
-  const vectorStore = new SimpleVectorStore();
-
-  // ニュース記事の読み込み
-  const dataLoader = new DataLoaderService();
-  const feeds = [
-    { url: 'https://techcrunch.com/feed/', source: 'TechCrunch' },
-    { url: 'https://www.theverge.com/rss/index.xml', source: 'The Verge' },
-  ];
-  const articles = await dataLoader.loadMultipleRSS(feeds);
-  console.log('Articles loaded:', articles.length);
-
-  // 記事をDocumentに変換
-  const documents = articles.map(article =>
-    new Document({
-      text: `${article.title}\n\n${article.content}`,
-      metadata: {
-        title: article.title,
-        link: article.link,
-        pubDate: article.pubDate.toISOString(),
-        source: article.source,
+  constructor() {
+    this.server = new Server(
+      {
+        name: 'my-mcp-server',
+        version: '1.0.0',
       },
-    })
-  );
+      {
+        capabilities: {
+          tools: {},
+        },
+      }
+    );
 
-  // ストレージコンテキストの作成
-  const storageContext = await storageContextFromDefaults({ vectorStore, persistDir: vectorDbPath });
-  // インデックスを作成
-  const index = await VectorStoreIndex.fromDocuments(documents, { storageContext });
+    this.setupHandlers();
+  }
 
-  return { index, llm };
+  private setupHandlers() {
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      return {
+        tools: [
+          {
+            name: 'list_files',
+            description: '現在のワークスペースのファイル一覧を取得',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            },
+          },
+          {
+            name: 'query_rag',
+            description: 'RAGシステムにクエリを投げて回答を取得',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                query: { type: 'string', description: '検索クエリ' },
+              },
+              required: ['query'],
+            },
+          },
+          {
+            name: 'load_rss_data',
+            description: 'RSSフィードからデータをロード',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                url: { type: 'string', description: 'RSS URL' },
+                source: { type: 'string', description: 'ソース名' },
+              },
+              required: ['url', 'source'],
+            },
+          },
+        ],
+      };
+    });
+
+    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const { name, arguments: args } = request.params;
+
+      if (name === 'list_files') {
+        try {
+          const files = await fsPromises.readdir(process.cwd());
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Files in workspace: ${files.join(', ')}`,
+              },
+            ],
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${(error as Error).message}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      } else if (name === 'query_rag') {
+        if (!this.ragSystem) { // this.ragSystemに変更
+          return {
+            content: [{ type: 'text', text: 'RAG system not initialized.' }],
+            isError: true,
+          };
+        }
+        const query = args?.query as string;
+        if (!query) {
+          return {
+            content: [{ type: 'text', text: 'Query is required.' }],
+            isError: true,
+          };
+        }
+        try {
+          const queryEngine = this.ragSystem.index.asQueryEngine(); // this.ragSystemに変更
+          const response = await queryEngine.query({ query });
+          return {
+            content: [{ type: 'text', text: response.toString() }],
+          };
+        } catch (error) {
+          return {
+            content: [{ type: 'text', text: `Error: ${(error as Error).message}` }],
+            isError: true,
+          };
+        }
+      } else if (name === 'load_rss_data') {
+        const url = args?.url as string;
+        const source = args?.source as string;
+        if (!url || !source) {
+          return {
+            content: [{ type: 'text', text: 'URL and source are required.' }],
+            isError: true,
+          };
+        }
+        try {
+          // DataLoaderServiceをインポートして使用
+          const { DataLoaderService } = await import('./services/dataLoader');
+          const dataLoader = new DataLoaderService();
+          const articles = await dataLoader.loadFromRSS(url, source);
+          return {
+            content: [{ type: 'text', text: `Loaded ${articles.length} articles from ${source}.` }],
+          };
+        } catch (error) {
+          return {
+            content: [{ type: 'text', text: `Error: ${(error as Error).message}` }],
+            isError: true,
+          };
+        }
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Unknown tool: ${name}`,
+          },
+        ],
+        isError: true,
+      };
+    });
+  }
+
+  async initialize() {
+    this.ragSystem = await initializeRagSystem();
+  }
+
+  async STDIOrun() {
+    await this.initialize();
+    const transport = new StdioServerTransport();
+    await this.server.connect(transport);
+    console.error('MCP server running...');
+  }
 }
 
-let ragSystem: { index: VectorStoreIndex, llm: Gemini };
+// サーバーを起動
+const server = new MyMCPServer();
+server.STDIOrun().catch(console.error);
 
-// サーバー起動時にRAGシステムを初期化
-initializeRagSystem()
-  .then(system => {
-    ragSystem = system;
-    console.log('RAG system initialized.');
-    // サーバーをリッスン開始
-    app.listen(port, () => {
-      console.log(`Server is running on http://localhost:${port}`);
-    });
-  })
-  .catch(error => {
-    console.error('Failed to initialize RAG system:', error);
-    process.exit(1); // 初期化失敗時は終了
-  });
-
-app.get('/', (req, res) => {
-  res.status(200).send('RAG System is up and running!');
-});
-
-// RAGクエリを処理するAPIエンドポイント
-app.post('/api/query', async (req, res) => {
-  if (!ragSystem) {
-    return res.status(503).json({ error: 'RAG system not initialized yet.' });
-  }
-
-  const { query } = req.body;
-
-  if (!query) {
-    return res.status(400).json({ error: 'Query parameter is required.' });
-  }
-
-  try {
-    // クエリエンジンを作成
-    const queryEngine = ragSystem.index.asQueryEngine();
-
-    // クエリを実行
-    const response = await queryEngine.query({ query });
-
-    res.json({ answer: response.toString() });
-  } catch (error) {
-    console.error('Error processing RAG query:', error);
-    res.status(500).json({ error: 'Internal server error.', details: (error as Error).message });
-  }
-});
-
-// ヘルスチェックエンドポイント
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', ragSystemInitialized: !!ragSystem });
-});

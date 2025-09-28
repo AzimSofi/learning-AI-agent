@@ -46,7 +46,7 @@ server.registerResource("About Azim",
         description: "Get to know about Azim's (仕事, 国籍, 趣味, 年齢)",
     },
     async (uri, variables) => {
-        const info = variables.info as string;
+        const info = decodeURIComponent(variables.info as string);
         let text = "";
 
         info === "仕事" ? text = "ソフトウェアエンジニア" : 

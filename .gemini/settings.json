@@ -4,7 +4,14 @@
       "command": "npx",
       "args": [
         "ts-node",
-        "mcp-server/mcpTestServer.ts"
+        "src/examples/mcpTestServer.ts"
+      ]
+    },
+    "mcp-server": {
+      "command": "npx",
+      "args": [
+        "ts-node",
+        "src/app.ts"
       ]
     }
   }
