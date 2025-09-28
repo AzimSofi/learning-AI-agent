@@ -8,7 +8,8 @@
     "dev": "ts-node src/app.ts",
     "test": "jest",
     "clean": "rimraf dist",
-    "mcp-test-server": "ts-node mcp-server/mcpTestServer.ts"
+    "mcp:test": "ts-node mcp-server/mcpTestServer.ts",
+    "mcp": "ts-node mcp-server/mcpServer.ts"
   },
   "keywords": [
     "RAG",

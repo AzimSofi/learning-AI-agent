@@ -6,6 +6,8 @@ import { HuggingFaceEmbedding } from '@llamaindex/huggingface';
 import { DataLoaderService, NewsArticle } from './services/dataLoader';
 import fs from 'fs';
 
+export { ragSystem };
+
 dotenv.config(); // process.env オブジェクトに環境変数が設定される
 
 const app = express();
