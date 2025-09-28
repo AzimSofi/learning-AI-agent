@@ -9,9 +9,11 @@
     "clean": "rimraf dist",
     "lint": "eslint . --ext .ts",
     "prettier": "prettier --write .",
-    
+
     "dev": "ts-node src/app.ts",
+    
     "express:test": "ts-node src/examples/expressTestServer.ts",
+    "client-api:test": "ts-node src/examples/apiClient.ts",    
     "mcp:test": "ts-node src/examples/mcpTestServer.ts"
   },
   "keywords": [
@@ -32,6 +34,7 @@
     "@modelcontextprotocol/inspector": "^0.16.8",
     "@modelcontextprotocol/sdk": "^1.18.2",
     "@types/express": "^5.0.3",
+    "axios": "^1.12.2",
     "dotenv": "^16.3.0",
     "express": "^5.1.0",
     "llamaindex": "^0.12.0",
