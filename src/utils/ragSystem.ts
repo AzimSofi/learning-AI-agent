@@ -4,7 +4,6 @@ import {
   Settings,
   Document,
   storageContextFromDefaults,
-  // VectorStore,
 } from 'llamaindex';
 import { HuggingFaceEmbedding } from '@llamaindex/huggingface';
 import { DataLoaderService, NewsArticle } from '../services/dataLoader';
@@ -12,12 +11,16 @@ import fs from 'fs';
 
 const vectorDbPath = "./data/vectordb";
 
-class RAGSystem {
-  private static instance: RAGSystem;
+class RAGSystem { 
+  // シングルトンパターンを実装しており、RAGSystemクラスのインスタンスを1つだけ作成する
+  // なぜstaticが必要、static でなければ、インスタンスが必要になる
+  private static instance: RAGSystem; 
   index!: VectorStoreIndex;
 
   private constructor() { }
 
+  // シングルトンの特徴：
+  // シングルトンパターンを実装しており、RAGSystemクラスのインスタンスを1つだけ作成する
   public static async getInstance(): Promise<RAGSystem> {
     if (!RAGSystem.instance) {
       RAGSystem.instance = new RAGSystem();
@@ -51,7 +54,7 @@ class RAGSystem {
 
       const documents = this.createDocuments(articles);
       const storageContext = await storageContextFromDefaults({ persistDir: vectorDbPath });
-      this.index = await VectorStoreIndex.fromDocuments(documents, { storageContext });
+      this.index = await VectorStoreIndex.fromDocuments(documents, { storageContext }); // storageContext: インデックスのストレージを管理するコンテキスト
       console.log('New RAG system created and saved.');
     }
   }
@@ -60,7 +63,7 @@ class RAGSystem {
     return articles.map(article =>
       new Document({
         text: `${article.title}\n\n${article.content}`,
-        id_: article.link, // Use URL as a unique ID
+        id_: article.link, // Use URL as a unique ID、データの整合性を保つため、データベース内で重複や混乱を防ぎるため
         metadata: {
           title: article.title,
           link: article.link,

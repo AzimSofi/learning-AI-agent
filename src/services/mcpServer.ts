@@ -112,19 +112,21 @@ export class MyMCPServer {
           }
 
           case 'load_rss_data': {
-            const { url, source } = args as { url: string; source: string };
-            if (!url || !source) throw new Error('URL and source are required.');
+            const url = args?.url as string;
+            const source = args?.source as string;
+            if (!url || !source) throw new Error('URL and source are required.'); // MCP のスキーマで required: ['url', 'source']と"args?."が null や undefined の場合に undefined を返しますですから
+
             const dataLoader = new DataLoaderService();
             const articles = await dataLoader.loadFromRSS(url, source);
             return { content: [{ type: 'text', text: JSON.stringify(articles, null, 2) }] };
           }
 
           case 'add_articles_to_index': {
-            const { articles } = args as { articles: NewsArticle[] };
+            const articles = args?.articles as NewsArticle[];
             if (!articles || !Array.isArray(articles)) throw new Error('Articles array is required.');
             const processedArticles = articles.map(article => ({
               ...article,
-              pubDate: new Date(article.pubDate),
+              pubDate: new Date(article.pubDate), // 記事のpubDateプロパティをDateオブジェクトに変換しています
             }));
             await this.ragSystem.addArticles(processedArticles);
             return { content: [{ type: 'text', text: `Successfully added ${articles.length} articles to the index.` }] };
