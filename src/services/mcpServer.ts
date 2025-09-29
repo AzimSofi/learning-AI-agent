@@ -3,16 +3,14 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import * as fsPromises from 'fs/promises';
-import { Gemini } from '@llamaindex/google';
-import { VectorStoreIndex } from 'llamaindex';
-import { initializeRagSystem } from '../utils/ragSystem';
-import { DataLoaderService } from './dataLoader';
+import { getRagSystem } from '../utils/ragSystem';
+import { NewsArticle, DataLoaderService } from './dataLoader';
 
 config();
 
 export class MyMCPServer {
   private server: Server;
-  private ragSystem: { index: VectorStoreIndex, llm: Gemini } | null = null;
+  private ragSystem!: Awaited<ReturnType<typeof getRagSystem>>;
 
   constructor() {
     this.server = new Server(
@@ -55,7 +53,7 @@ export class MyMCPServer {
           },
           {
             name: 'load_rss_data',
-            description: 'RSSフィードからデータをロード',
+            description: 'RSSフィードからデータをロードし、記事オブジェクトの配列を返す',
             inputSchema: {
               type: 'object',
               properties: {
@@ -65,98 +63,87 @@ export class MyMCPServer {
               required: ['url', 'source'],
             },
           },
+          {
+            name: 'add_articles_to_index',
+            description: '記事オブジェクトの配列をRAGシステムのインデックスに追加する',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                articles: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string' },
+                      link: { type: 'string' },
+                      pubDate: { type: 'string', format: 'date-time' },
+                      content: { type: 'string' },
+                      source: { type: 'string' },
+                    },
+                    required: ['title', 'link', 'content', 'source'],
+                  }
+                }
+              },
+              required: ['articles'],
+            },
+          }
         ],
       };
     });
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
+      const { name: name, arguments: args } = request.params;
 
-      if (name === 'list_files') {
-        try {
-          const files = await fsPromises.readdir(process.cwd());
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Files in workspace: ${files.join(', ')}`,
-              },
-            ],
-          };
-        } catch (error) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Error: ${(error as Error).message}`,
-              },
-            ],
-            isError: true,
-          };
+      try {
+        switch (name) {
+          case 'list_files': {
+            const files = await fsPromises.readdir(process.cwd());
+            return { content: [{ type: 'text', text: `Files in workspace: ${files.join(', ')}` }] };
+          }
+
+          case 'query_rag': {
+            const query = args?.query as string;
+            if (!query) {
+              throw new Error('Query is required.')
+            }
+
+            const response = await this.ragSystem.query(query);
+            return { content: [{ type: 'text', text: response }] };
+          }
+
+          case 'load_rss_data': {
+            const { url, source } = args as { url: string; source: string };
+            if (!url || !source) throw new Error('URL and source are required.');
+            const dataLoader = new DataLoaderService();
+            const articles = await dataLoader.loadFromRSS(url, source);
+            return { content: [{ type: 'text', text: JSON.stringify(articles, null, 2) }] };
+          }
+
+          case 'add_articles_to_index': {
+            const { articles } = args as { articles: NewsArticle[] };
+            if (!articles || !Array.isArray(articles)) throw new Error('Articles array is required.');
+            const processedArticles = articles.map(article => ({
+              ...article,
+              pubDate: new Date(article.pubDate),
+            }));
+            await this.ragSystem.addArticles(processedArticles);
+            return { content: [{ type: 'text', text: `Successfully added ${articles.length} articles to the index.` }] };
+          }
+
+          default:
+            throw new Error(`Unknown tool: ${name}`);
         }
-      } else if (name === 'query_rag') {
-        if (!this.ragSystem) {
-          return {
-            content: [{ type: 'text', text: 'RAG system not initialized.' }],
-            isError: true,
-          };
-        }
-        const query = args?.query as string;
-        if (!query) {
-          return {
-            content: [{ type: 'text', text: 'Query is required.' }],
-            isError: true,
-          };
-        }
-        try {
-          const queryEngine = this.ragSystem.index.asQueryEngine();
-          const response = await queryEngine.query({ query });
-          return {
-            content: [{ type: 'text', text: response.toString() }],
-          };
-        } catch (error) {
-          return {
-            content: [{ type: 'text', text: `Error: ${(error as Error).message}` }],
-            isError: true,
-          };
-        }
-      } else if (name === 'load_rss_data') {
-        const url = args?.url as string;
-        const source = args?.source as string;
-        if (!url || !source) {
-          return {
-            content: [{ type: 'text', text: 'URL and source are required.' }],
-            isError: true,
-          };
-        }
-        try {
-          const dataLoader = new DataLoaderService();
-          const articles = await dataLoader.loadFromRSS(url, source);
-          return {
-            content: [{ type: 'text', text: `Loaded ${articles.length} articles from ${source}.` }],
-          };
-        } catch (error) {
-          return {
-            content: [{ type: 'text', text: `Error: ${(error as Error).message}` }],
-            isError: true,
-          };
-        }
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error: ${(error as Error).message}` }],
+          isError: true,
+        };
       }
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Unknown tool: ${name}`,
-          },
-        ],
-        isError: true,
-      };
     });
   }
 
   async initialize() {
-    this.ragSystem = await initializeRagSystem();
+    this.ragSystem = await getRagSystem();
   }
 
   async STDIOrun() {

@@ -1,61 +1,94 @@
-import { Gemini } from '@llamaindex/google';
-import { VectorStoreIndex, Settings, SimpleVectorStore, Document, storageContextFromDefaults } from 'llamaindex';
+import { Gemini, GEMINI_MODEL } from '@llamaindex/google';
+import {
+  VectorStoreIndex,
+  Settings,
+  Document,
+  storageContextFromDefaults,
+  // VectorStore,
+} from 'llamaindex';
 import { HuggingFaceEmbedding } from '@llamaindex/huggingface';
-import { DataLoaderService } from '../services/dataLoader';
+import { DataLoaderService, NewsArticle } from '../services/dataLoader';
 import fs from 'fs';
 
-export async function initializeRagSystem() {
-  const llm = new Gemini({
-    model: "gemini-2.5-flash" as any,
-  });
-  Settings.llm = llm; // デフォルトはopenAIだから（geminiを使いたい）、設定しないと
-  Settings.embedModel = new HuggingFaceEmbedding();
+const vectorDbPath = "./data/vectordb";
 
-  // シンプルなベクトルストアの初期化・メモリ内にベクトルを保存
-  const vectorDbPath = "./data/vectordb";
-  if (!fs.existsSync(vectorDbPath)) {
-    fs.mkdirSync(vectorDbPath, { recursive: true });
+class RAGSystem {
+  private static instance: RAGSystem;
+  index!: VectorStoreIndex;
+
+  private constructor() { }
+
+  public static async getInstance(): Promise<RAGSystem> {
+    if (!RAGSystem.instance) {
+      RAGSystem.instance = new RAGSystem();
+      await RAGSystem.instance.initialize();
+    }
+    return RAGSystem.instance;
   }
-  const vectorStore = new SimpleVectorStore();
 
-  let storageContext;
-  let index: VectorStoreIndex;
+  private async initialize(): Promise<void> {
+    console.log('Initializing RAG system...');
+    Settings.llm = new Gemini({ model: GEMINI_MODEL.GEMINI_2_5_FLASH_LITE });
+    Settings.embedModel = new HuggingFaceEmbedding();
 
-  try {
-    // 既存のベクトルストアをロードしようとする
-    storageContext = await storageContextFromDefaults({ persistDir: vectorDbPath });
-    index = await VectorStoreIndex.fromVectorStore(vectorStore);
-    console.log('Loaded existing RAG system from disk.');
-  } catch (error) {
-    console.log('No existing RAG system found, creating new one.');
-    // 新しく作成
-    // ニュース記事の読み込み
-    const dataLoader = new DataLoaderService();
-    const feeds = [
-      { url: 'https://techcrunch.com/feed/', source: 'TechCrunch' },
-      { url: 'https://www.theverge.com/rss/index.xml', source: 'The Verge' },
-    ];
-    const articles = await dataLoader.loadMultipleRSS(feeds);
-    console.log('Articles loaded:', articles.length);
+    if (!fs.existsSync(vectorDbPath)) {
+      fs.mkdirSync(vectorDbPath, { recursive: true });
+    }
 
-    // 記事をDocumentに変換
-    const documents = articles.map(article =>
+    try {
+      const storageContext = await storageContextFromDefaults({ persistDir: vectorDbPath });
+      this.index = await VectorStoreIndex.init({ storageContext });
+      console.log('Loaded existing RAG system from disk.');
+    } catch (error) {
+      console.log('No existing RAG system found, creating new one.');
+      const dataLoader = new DataLoaderService();
+      const feeds = [
+        { url: 'https://techcrunch.com/feed/', source: 'TechCrunch' },
+        { url: 'https://www.theverge.com/rss/index.xml', source: 'The Verge' },
+      ];
+      const articles = await dataLoader.loadMultipleRSS(feeds);
+      console.log('Articles loaded for initial index:', articles.length);
+
+      const documents = this.createDocuments(articles);
+      const storageContext = await storageContextFromDefaults({ persistDir: vectorDbPath });
+      this.index = await VectorStoreIndex.fromDocuments(documents, { storageContext });
+      console.log('New RAG system created and saved.');
+    }
+  }
+
+  private createDocuments(articles: NewsArticle[]): Document[] {
+    return articles.map(article =>
       new Document({
         text: `${article.title}\n\n${article.content}`,
+        id_: article.link, // Use URL as a unique ID
         metadata: {
           title: article.title,
           link: article.link,
-          pubDate: article.pubDate.toISOString(),
+          pubDate: article.pubDate?.toISOString(),
           source: article.source,
         },
       })
     );
-
-    // ストレージコンテキストの作成
-    storageContext = await storageContextFromDefaults({ vectorStore, persistDir: vectorDbPath });
-    // インデックスを作成
-    index = await VectorStoreIndex.fromDocuments(documents, { storageContext });
   }
 
-  return { index, llm };
+  public async addArticles(articles: NewsArticle[]): Promise<void> {
+    if (!this.index) {
+      throw new Error("RAG system is not initialized.");
+    }
+    console.log(`Adding ${articles.length} new articles to the index...`);
+    const documents = this.createDocuments(articles);
+    await this.index.insertNodes(documents);
+    console.log('Successfully added articles and persisted the index.');
+  }
+
+  public async query(queryText: string): Promise<string> {
+    if (!this.index) {
+      throw new Error("RAG system is not initialized.");
+    }
+    const queryEngine = this.index.asQueryEngine();
+    const response = await queryEngine.query({ query: queryText });
+    return response.toString();
+  }
 }
+
+export const getRagSystem = () => RAGSystem.getInstance();
