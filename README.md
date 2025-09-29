@@ -136,13 +136,14 @@ Gemini CLIがMCPプロトコルをサポートしている場合、起動した�
 ├── package.json
 ├── tsconfig.json
 └── src/
-    ├── app.ts
+    ├── app.ts                 # アプリケーションのエントリーポイント
     ├── examples/
     │   ├── expressTestServer.ts # RAG APIサーバー
     │   └── mcpTestServer.ts     # MCPテストサーバー
     ├── services/
-    │   ├── dataLoader.ts
-    │   └── dataLoader.test.ts
+    │   ├── dataLoader.ts        # データロード関連のサービスクラス
+    │   ├── dataLoader.test.ts
+    │   └── mcpServer.ts         # MCPサーバーの主要ロジック
     └── utils/
         ├── ragSystem.ts
         └── writeTextFileAsync.ts
