@@ -49,7 +49,7 @@ describe('RAGSystem initialize method', () => {
   });
 
   test('should create a new index if vector DB does not exist', async () => {
-    mockedFs.existsSync.mockReturnValue(false); // ファイルやディレクトリの存在を確認するメソッド
+    mockedFs.existsSync.mockReturnValue(false); // existsSync：ファイルやディレクトリの存在を確認するメソッド、existsSync.mockReturnValue(false)で、常にfalse（存在しない）を返すようオーバーライド
     const mockArticles: NewsArticle[] = [
       { title: 'Test Article 1', content: 'Content 1', link: 'link1', source: 'test', pubDate: new Date() },
     ];
