@@ -41,15 +41,15 @@ describe('RAGSystem initialize method', () => {
     jest.clearAllMocks();
 
     // Mock console.log
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {}); // 元コードからのconsole.logの出力を抑制する（詳細：mockImplementation で上書きされる）
   });
 
   afterEach(() => {
-    consoleLogSpy.mockRestore();
+    consoleLogSpy.mockRestore(); // スパイをリセット（元のconsole.logに戻す）
   });
 
   test('should create a new index if vector DB does not exist', async () => {
-    mockedFs.existsSync.mockReturnValue(false);
+    mockedFs.existsSync.mockReturnValue(false); // ファイルやディレクトリの存在を確認するメソッド
     const mockArticles: NewsArticle[] = [
       { title: 'Test Article 1', content: 'Content 1', link: 'link1', source: 'test', pubDate: new Date() },
     ];
