@@ -11,7 +11,7 @@ import fs from 'fs';
 
 const vectorDbPath = "./data/vectordb";
 
-class RAGSystem { 
+export class RAGSystem { 
   // シングルトンパターンを実装しており、RAGSystemクラスのインスタンスを1つだけ作成する
   // なぜstaticが必要、static でなければ、インスタンスが必要になる
   private static instance: RAGSystem; 
